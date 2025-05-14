@@ -1,6 +1,8 @@
 package pgxadapter
 
-import "github.com/casbin/casbin/v2/persist"
+import (
+	"github.com/casbin/casbin/v2/persist"
+)
 
 type Adapter struct {
 }
