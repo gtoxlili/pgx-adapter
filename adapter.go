@@ -1,28 +1,26 @@
 package pgxadapter
 
 import (
+	"context"
 	"github.com/casbin/casbin/v2/persist"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Adapter struct {
 }
 
-var _ persist.Adapter = (*Adapter)(nil)
+// the supported for Casbin interfaces.
+var (
+	_ persist.Adapter                 = new(Adapter)
+	_ persist.ContextAdapter          = new(Adapter)
+	_ persist.FilteredAdapter         = new(Adapter)
+	_ persist.ContextFilteredAdapter  = new(Adapter)
+	_ persist.BatchAdapter            = new(Adapter)
+	_ persist.ContextBatchAdapter     = new(Adapter)
+	_ persist.UpdatableAdapter        = new(Adapter)
+	_ persist.ContextUpdatableAdapter = new(Adapter)
+)
 
-var _ persist.FilteredAdapter = (*Adapter)(nil)
-
-var _ persist.BatchAdapter = (*Adapter)(nil)
-
-var _ persist.UpdatableAdapter = (*Adapter)(nil)
-
-var _ persist.ContextAdapter = (*Adapter)(nil)
-
-var _ persist.ContextBatchAdapter = (*Adapter)(nil)
-
-var _ persist.ContextUpdatableAdapter = (*Adapter)(nil)
-
-var _ persist.ContextFilteredAdapter = (*Adapter)(nil)
-
-func NewAdapter() *Adapter {
-	return &Adapter{}
+func NewAdapter(ctx context.Context, db *pgxpool.Pool) (*Adapter, error) {
+	panic("implement me")
 }
