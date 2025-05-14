@@ -22,3 +22,7 @@ var _ persist.ContextBatchAdapter = (*Adapter)(nil)
 var _ persist.ContextUpdatableAdapter = (*Adapter)(nil)
 
 var _ persist.ContextFilteredAdapter = (*Adapter)(nil)
+
+func NewAdapter() *Adapter {
+	return &Adapter{}
+}
