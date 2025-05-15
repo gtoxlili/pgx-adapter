@@ -113,7 +113,7 @@ func (s *store) selectWhere(ctx context.Context, ptype string, startIdx int, arg
 	conditions = append(conditions, lo.Map(lo.Filter(lo.Map(args, func(arg string, i int) string {
 		return "v" + strconv.Itoa(i+startIdx)
 	}), func(_ string, i int) bool {
-		return lo.IsEmpty(args[i])
+		return lo.IsNotEmpty(args[i])
 	}), func(arg string, i int) string {
 		return arg + " = $" + strconv.Itoa(i+1+len(conditions))
 	})...)
@@ -194,7 +194,7 @@ func (s *store) deleteWhere(ctx context.Context, ptype string, startIdx int, arg
 	conditions := strings.Join(lo.Map(lo.Filter(lo.Map(args, func(arg string, i int) string {
 		return "v" + strconv.Itoa(i+startIdx)
 	}), func(_ string, i int) bool {
-		return lo.IsEmpty(args[i])
+		return lo.IsNotEmpty(args[i])
 	}), func(arg string, i int) string {
 		return arg + " = $" + strconv.Itoa(i+2)
 	}), " and ")
