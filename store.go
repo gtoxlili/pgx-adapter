@@ -86,7 +86,7 @@ func (s *store) insertRow(ctx context.Context, args ...string) error {
 	sql := fmt.Sprintf(insertRow, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
 		return "v" + strconv.Itoa(i)
 	}), ","), strings.Join(lo.Times(s.fieldCount, func(i int) string {
-		return "$" + strconv.Itoa(i+1)
+		return "$" + strconv.Itoa(i+2)
 	}), ","))
 
 	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(args)...)
@@ -117,6 +117,9 @@ func (s *store) selectWhere(ctx context.Context, ptype string, startIdx int, arg
 	}), func(arg string, i int) string {
 		return arg + " = $" + strconv.Itoa(i+1+len(conditions))
 	})...)
+	if len(conditions) > 0 {
+		sql += " where " + strings.Join(conditions, " and ")
+	}
 
 	rows, err := s.db.Query(ctx, sql, lo.ToAnySlice(lo.Compact(args))...)
 	if err != nil {
@@ -134,4 +137,49 @@ func (s *store) selectWhere(ctx context.Context, ptype string, startIdx int, arg
 		result = append(result, lo.FromSlicePtr(row))
 	}
 	return result, nil
+}
+
+// old, updated
+func (s *store) updateRow(ctx context.Context, ptype string, old, updated []string) error {
+	if len(old) != s.fieldCount || len(updated) != s.fieldCount {
+		return fmt.Errorf("args length (old: %d, updated: %d) is not equal to field count %d", len(old), len(updated), s.fieldCount)
+	}
+
+	sql := fmt.Sprintf(updateRow, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
+		return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+2)
+	}), ", "), strings.Join(lo.Times(s.fieldCount, func(i int) string {
+		return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+s.fieldCount+2)
+	}), " and "))
+
+	merged := append(old, updated...)
+	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(append([]string{ptype}, merged...))...)
+	if err != nil {
+		return fmt.Errorf("failed to update row: %v", err)
+	}
+	return nil
+}
+
+func (s *store) deleteRow(ctx context.Context, args ...string) error {
+	if len(args) != s.fieldCount+1 {
+		return fmt.Errorf("args length %d is not equal to field count %d", len(args)-1, s.fieldCount)
+	}
+
+	sql := fmt.Sprintf(deleteRow, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
+		return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+2)
+	}), " and "))
+
+	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(args)...)
+	if err != nil {
+		return fmt.Errorf("failed to delete row: %v", err)
+	}
+	return nil
+}
+
+func (s *store) deleteByPType(ctx context.Context, ptype string) error {
+	sql := fmt.Sprintf(deleteByPType, s.tableName)
+	_, err := s.db.Exec(ctx, sql, ptype)
+	if err != nil {
+		return fmt.Errorf("failed to delete by ptype: %v", err)
+	}
+	return nil
 }
