@@ -4,10 +4,12 @@ import (
 	"context"
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/atomic"
 )
 
 type Adapter struct {
-	store *store
+	store  *store
+	filter *atomic.Bool
 }
 
 // the supported for Casbin interfaces.
@@ -42,7 +44,8 @@ func NewAdapter(ctx context.Context, db *pgxpool.Pool, opts ...Option) (*Adapter
 	}
 
 	adapter := &Adapter{
-		store: newStore(db),
+		store:  newStore(db),
+		filter: atomic.NewBool(false),
 	}
 	for _, opt := range opts {
 		opt(adapter)

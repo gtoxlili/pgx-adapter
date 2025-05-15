@@ -6,6 +6,7 @@ require (
 	github.com/casbin/casbin/v2 v2.105.0
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/samber/lo v1.50.0
+	go.uber.org/atomic v1.11.0
 )
 
 require (

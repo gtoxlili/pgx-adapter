@@ -248,7 +248,6 @@ func (s *store) deleteAndInsertAll(ctx context.Context, rules [][]string) error 
 		}
 	}
 
-	//dropTable
 	return tx.Commit(ctx)
 }
 
@@ -305,7 +304,6 @@ func (s *store) batchDelete(ctx context.Context, ptype string, rules [][]string)
 	return nil
 }
 
-// batchUpdate
 func (s *store) batchUpdate(ctx context.Context, ptype string, oldRules, newRules [][]string) error {
 	if len(oldRules) == 0 || len(newRules) == 0 {
 		return nil

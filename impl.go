@@ -7,6 +7,7 @@ import (
 )
 
 func (a *Adapter) LoadPolicyCtx(ctx context.Context, model model.Model) error {
+	a.filter.Store(false)
 	lines, err := a.store.selectAll(ctx)
 	if err != nil {
 		return err

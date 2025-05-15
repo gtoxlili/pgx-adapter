@@ -13,6 +13,7 @@ func (a *Adapter) UpdatePoliciesCtx(ctx context.Context, sec string, ptype strin
 	return a.store.batchUpdate(ctx, ptype, oldRules, newRules)
 }
 
+// UpdateFilteredPoliciesCtx deletes old rules and adds new rules.
 func (a *Adapter) UpdateFilteredPoliciesCtx(ctx context.Context, sec string, ptype string, newRules [][]string, fieldIndex int, fieldValues ...string) ([][]string, error) {
 	return nil, errors.New("not implemented")
 }
