@@ -1,6 +1,9 @@
 package pgxadapter
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 func (a *Adapter) UpdatePolicyCtx(ctx context.Context, sec string, ptype string, oldRule, newRule []string) error {
 	return a.store.updateRow(ctx, ptype, oldRule, newRule)
@@ -11,5 +14,5 @@ func (a *Adapter) UpdatePoliciesCtx(ctx context.Context, sec string, ptype strin
 }
 
 func (a *Adapter) UpdateFilteredPoliciesCtx(ctx context.Context, sec string, ptype string, newRules [][]string, fieldIndex int, fieldValues ...string) ([][]string, error) {
-	panic("implement me")
+	return nil, errors.New("not implemented")
 }
