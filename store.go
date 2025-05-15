@@ -189,9 +189,13 @@ func (s *store) deleteWhere(ctx context.Context, ptype string, startIdx int, arg
 		return fmt.Errorf("ptype is empty")
 	}
 
+	if len(args) != s.fieldCount-startIdx {
+		return fmt.Errorf("args length %d is not equal to field count %d", len(args), s.fieldCount-startIdx)
+	}
+
 	sql := fmt.Sprintf(deleteByPType, s.tableName)
 
-	conditions := strings.Join(lo.Map(lo.Filter(lo.Map(args, func(arg string, i int) string {
+	conditions := strings.Join(lo.Map(lo.Filter(lo.Times(s.fieldCount-startIdx, func(i int) string {
 		return "v" + strconv.Itoa(i+startIdx)
 	}), func(_ string, i int) bool {
 		return lo.IsNotEmpty(args[i])
