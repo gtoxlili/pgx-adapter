@@ -46,5 +46,5 @@ func (a *Adapter) RemovePolicyCtx(ctx context.Context, sec string, ptype string,
 }
 
 func (a *Adapter) RemoveFilteredPolicyCtx(ctx context.Context, sec string, ptype string, fieldIndex int, fieldValues ...string) error {
-	return a.store.deleteByPType(ctx, ptype)
+	return a.store.deleteWhere(ctx, ptype, fieldIndex, fieldValues...)
 }

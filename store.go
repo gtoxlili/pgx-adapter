@@ -184,6 +184,32 @@ func (s *store) deleteByPType(ctx context.Context, ptype string) error {
 	return nil
 }
 
+func (s *store) deleteWhere(ctx context.Context, ptype string, startIdx int, args ...string) error {
+	if ptype == "" {
+		return fmt.Errorf("ptype is empty")
+	}
+
+	sql := fmt.Sprintf(deleteByPType, s.tableName)
+
+	conditions := strings.Join(lo.Map(lo.Filter(lo.Map(args, func(arg string, i int) string {
+		return "v" + strconv.Itoa(i+startIdx)
+	}), func(_ string, i int) bool {
+		return lo.IsEmpty(args[i])
+	}), func(arg string, i int) string {
+		return arg + " = $" + strconv.Itoa(i+2)
+	}), " and ")
+
+	if len(conditions) > 0 {
+		sql += " and " + conditions
+	}
+
+	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(lo.Compact(genRule(ptype, args)))...)
+	if err != nil {
+		return fmt.Errorf("failed to delete where: %v", err)
+	}
+	return nil
+}
+
 func (s *store) deleteAndInsertAll(ctx context.Context, rules [][]string) error {
 	if len(rules) == 0 {
 		return nil
@@ -224,4 +250,93 @@ func (s *store) deleteAndInsertAll(ctx context.Context, rules [][]string) error 
 
 	//dropTable
 	return tx.Commit(ctx)
+}
+
+// 批量插入/删除数据
+func (s *store) batchInsert(ctx context.Context, ptype string, rules [][]string) error {
+	if len(rules) == 0 {
+		return nil
+	}
+
+	batch := &pgx.Batch{}
+	for _, rule := range rules {
+		sql := fmt.Sprintf(insertRow, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
+			return "v" + strconv.Itoa(i)
+		}), ","), strings.Join(lo.Times(s.fieldCount, func(i int) string {
+			return "$" + strconv.Itoa(i+2)
+		}), ","))
+		batch.Queue(sql, lo.ToAnySlice(genRule(ptype, rule))...)
+	}
+
+	br := s.db.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		_, err := br.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to execute batch: %v", err)
+		}
+	}
+	return nil
+}
+
+func (s *store) batchDelete(ctx context.Context, ptype string, rules [][]string) error {
+	if len(rules) == 0 {
+		return nil
+	}
+
+	batch := &pgx.Batch{}
+	for _, rule := range rules {
+		sql := fmt.Sprintf(deleteRow, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
+			return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+2)
+		}), " and "))
+		batch.Queue(sql, lo.ToAnySlice(genRule(ptype, rule))...)
+	}
+
+	br := s.db.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		_, err := br.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to execute batch: %v", err)
+		}
+	}
+	return nil
+}
+
+// batchUpdate
+func (s *store) batchUpdate(ctx context.Context, ptype string, oldRules, newRules [][]string) error {
+	if len(oldRules) == 0 || len(newRules) == 0 {
+		return nil
+	}
+	if len(oldRules) != len(newRules) {
+		return fmt.Errorf("oldRules and newRules length mismatch: %d vs %d", len(oldRules), len(newRules))
+	}
+
+	batch := &pgx.Batch{}
+	for i := 0; i < len(oldRules); i++ {
+		if len(oldRules[i]) != s.fieldCount || len(newRules[i]) != s.fieldCount {
+			return fmt.Errorf("args[%d] length (old: %d, updated: %d) is not equal to field count %d", i, len(oldRules[i]), len(newRules[i]), s.fieldCount)
+		}
+		sql := fmt.Sprintf(updateRow, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
+			return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+2)
+		}), ", "), strings.Join(lo.Times(s.fieldCount, func(i int) string {
+			return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+s.fieldCount+2)
+		}), " and "))
+
+		merged := append(oldRules[i], newRules[i]...)
+		batch.Queue(sql, lo.ToAnySlice(genRule(ptype, merged))...)
+	}
+
+	br := s.db.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		_, err := br.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to execute batch: %v", err)
+		}
+	}
+	return nil
 }
