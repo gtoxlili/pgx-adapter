@@ -101,14 +101,20 @@ func (s *store) selectAll(ctx context.Context) ([][]string, error) {
 }
 
 func (s *store) selectWhere(ctx context.Context, ptype string, startIdx int, args ...string) ([][]string, error) {
+	// args 需 小于等于 fieldCount - startIdx
+	if len(args) > s.fieldCount-startIdx {
+		return nil, fmt.Errorf("args length %d is greater than field count %d", len(args), s.fieldCount-startIdx)
+	}
+
 	sql := fmt.Sprintf(selectSQL, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
 		return "v" + strconv.Itoa(i)
 	}), ","), ptype)
 
+	tmpArgs := args
 	var conditions []string
 	if lo.IsNotEmpty(ptype) {
 		conditions = append(conditions, "ptype = $1")
-		args = genRule(ptype, args)
+		tmpArgs = genRule(ptype, args)
 	}
 	conditions = append(conditions, lo.Map(lo.Filter(lo.Map(args, func(arg string, i int) string {
 		return "v" + strconv.Itoa(i+startIdx)
@@ -121,7 +127,7 @@ func (s *store) selectWhere(ctx context.Context, ptype string, startIdx int, arg
 		sql += " where " + strings.Join(conditions, " and ")
 	}
 
-	rows, err := s.db.Query(ctx, sql, lo.ToAnySlice(lo.Compact(args))...)
+	rows, err := s.db.Query(ctx, sql, lo.ToAnySlice(lo.Compact(tmpArgs))...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to select where: %v", err)
 	}
