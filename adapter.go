@@ -7,6 +7,7 @@ import (
 )
 
 type Adapter struct {
+	store *store
 }
 
 // the supported for Casbin interfaces.
@@ -21,6 +22,35 @@ var (
 	_ persist.ContextUpdatableAdapter = new(Adapter)
 )
 
-func NewAdapter(ctx context.Context, db *pgxpool.Pool) (*Adapter, error) {
-	panic("implement me")
+type Option func(*Adapter)
+
+func WithFieldCount(fieldCount int) Option {
+	return func(a *Adapter) {
+		a.store.setFieldCount(fieldCount)
+	}
+}
+
+func WithTableName(tableName string) Option {
+	return func(a *Adapter) {
+		a.store.setTableName(tableName)
+	}
+}
+
+func NewAdapter(ctx context.Context, db *pgxpool.Pool, opts ...Option) (*Adapter, error) {
+	if err := db.Ping(ctx); err != nil {
+		return nil, err
+	}
+
+	adapter := &Adapter{
+		store: newStore(db),
+	}
+	for _, opt := range opts {
+		opt(adapter)
+	}
+
+	if err := adapter.store.initTable(ctx); err != nil {
+		return nil, err
+	}
+
+	return adapter, nil
 }
