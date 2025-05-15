@@ -40,7 +40,7 @@ func (s *store) setTableName(tableName string) {
 }
 
 func (s *store) initTable(ctx context.Context) error {
-	vColumns := lo.Times(20, func(i int) string {
+	vColumns := lo.Times(s.fieldCount, func(i int) string {
 		return "v" + strconv.Itoa(i)
 	})
 	sqlSeq := strings.SplitSeq(fmt.Sprintf(createTableSQL, lo.SnakeCase(s.tableName), strings.Join(lo.Map(vColumns, func(v string, _ int) string {
