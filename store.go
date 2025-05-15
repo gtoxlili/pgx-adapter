@@ -78,9 +78,9 @@ func (s *store) dropTable(ctx context.Context) error {
 	return nil
 }
 
-func (s *store) insertRow(ctx context.Context, args ...string) error {
-	if len(args) != s.fieldCount+1 {
-		return fmt.Errorf("args length %d is not equal to field count %d", len(args)-1, s.fieldCount)
+func (s *store) insertRow(ctx context.Context, ptype string, args ...string) error {
+	if len(args) != s.fieldCount {
+		return fmt.Errorf("args length %d is not equal to field count %d", len(args), s.fieldCount)
 	}
 
 	sql := fmt.Sprintf(insertRow, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
@@ -89,7 +89,7 @@ func (s *store) insertRow(ctx context.Context, args ...string) error {
 		return "$" + strconv.Itoa(i+2)
 	}), ","))
 
-	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(args)...)
+	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(genRule(ptype, args))...)
 	if err != nil {
 		return fmt.Errorf("failed to insert row: %v", err)
 	}
@@ -108,7 +108,7 @@ func (s *store) selectWhere(ctx context.Context, ptype string, startIdx int, arg
 	var conditions []string
 	if lo.IsNotEmpty(ptype) {
 		conditions = append(conditions, "ptype = $1")
-		args = append([]string{ptype}, args...)
+		args = genRule(ptype, args)
 	}
 	conditions = append(conditions, lo.Map(lo.Filter(lo.Map(args, func(arg string, i int) string {
 		return "v" + strconv.Itoa(i+startIdx)
@@ -152,23 +152,23 @@ func (s *store) updateRow(ctx context.Context, ptype string, old, updated []stri
 	}), " and "))
 
 	merged := append(old, updated...)
-	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(append([]string{ptype}, merged...))...)
+	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(genRule(ptype, merged))...)
 	if err != nil {
 		return fmt.Errorf("failed to update row: %v", err)
 	}
 	return nil
 }
 
-func (s *store) deleteRow(ctx context.Context, args ...string) error {
-	if len(args) != s.fieldCount+1 {
-		return fmt.Errorf("args length %d is not equal to field count %d", len(args)-1, s.fieldCount)
+func (s *store) deleteRow(ctx context.Context, ptype string, args ...string) error {
+	if len(args) != s.fieldCount {
+		return fmt.Errorf("args length %d is not equal to field count %d", len(args), s.fieldCount)
 	}
 
 	sql := fmt.Sprintf(deleteRow, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
 		return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+2)
 	}), " and "))
 
-	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(args)...)
+	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(genRule(ptype, args))...)
 	if err != nil {
 		return fmt.Errorf("failed to delete row: %v", err)
 	}
@@ -182,4 +182,46 @@ func (s *store) deleteByPType(ctx context.Context, ptype string) error {
 		return fmt.Errorf("failed to delete by ptype: %v", err)
 	}
 	return nil
+}
+
+func (s *store) deleteAndInsertAll(ctx context.Context, rules [][]string) error {
+	if len(rules) == 0 {
+		return nil
+	}
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %v", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. 删除现有的所有数据
+	_, err = tx.Exec(ctx, fmt.Sprintf(deleteAll, s.tableName))
+	if err != nil {
+		return fmt.Errorf("failed to drop table: %v", err)
+	}
+
+	// 2. 通过 Batch 插入数据
+	batch := &pgx.Batch{}
+	for _, rule := range rules {
+		sql := fmt.Sprintf(insertRow, s.tableName, strings.Join(lo.Times(s.fieldCount, func(i int) string {
+			return "v" + strconv.Itoa(i)
+		}), ","), strings.Join(lo.Times(s.fieldCount, func(i int) string {
+			return "$" + strconv.Itoa(i+2)
+		}), ","))
+		batch.Queue(sql, lo.ToAnySlice(rule)...)
+	}
+
+	br := tx.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		_, err = br.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to execute batch: %v", err)
+		}
+	}
+
+	//dropTable
+	return tx.Commit(ctx)
 }
