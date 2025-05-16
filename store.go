@@ -222,10 +222,6 @@ func (s *store) deleteWhere(ctx context.Context, ptype string, startIdx int, arg
 }
 
 func (s *store) deleteAndInsertAll(ctx context.Context, rules [][]string) error {
-	if len(rules) == 0 {
-		return nil
-	}
-
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %v", err)
@@ -249,13 +245,19 @@ func (s *store) deleteAndInsertAll(ctx context.Context, rules [][]string) error 
 		batch.Queue(sql, lo.ToAnySlice(rule)...)
 	}
 
-	br := tx.SendBatch(ctx, batch)
-	defer br.Close()
+	if batch.Len() > 0 {
+		br := tx.SendBatch(ctx, batch)
 
-	for i := 0; i < batch.Len(); i++ {
-		_, err = br.Exec()
-		if err != nil {
-			return fmt.Errorf("failed to execute batch: %v", err)
+		for i := 0; i < batch.Len(); i++ {
+			_, err = br.Exec()
+			if err != nil {
+				return fmt.Errorf("failed to execute batch: %v", err)
+			}
+		}
+
+		// 先关闭 br
+		if err = br.Close(); err != nil {
+			return fmt.Errorf("failed to close batch: %v", err)
 		}
 	}
 
