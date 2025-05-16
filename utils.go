@@ -13,11 +13,10 @@ func genRule(ptype string, rule []string) []string {
 	return result
 }
 
-type Storer interface {
+type Commander interface {
 	Begin(context.Context) (pgx.Tx, error)
 	SendBatch(context.Context, *pgx.Batch) pgx.BatchResults
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-	CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error)
 }

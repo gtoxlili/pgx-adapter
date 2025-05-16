@@ -40,7 +40,7 @@ func WithTableName(tableName string) Option {
 
 func NewAdapter(ctx context.Context, db interface {
 	driver.Pinger
-	Storer
+	Commander
 }, opts ...Option) (*Adapter, error) {
 	if err := db.Ping(ctx); err != nil {
 		return nil, err

@@ -21,12 +21,12 @@ const (
 )
 
 type store struct {
-	db         Storer
+	db         Commander
 	tableName  string
 	fieldCount int
 }
 
-func newStore(db Storer) *store {
+func newStore(db Commander) *store {
 	return &store{db: db, fieldCount: defaultFieldCount, tableName: defaultTableName}
 }
 
