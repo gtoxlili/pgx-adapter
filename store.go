@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/samber/lo"
 	"strconv"
 	"strings"
@@ -22,12 +21,12 @@ const (
 )
 
 type store struct {
-	db         *pgxpool.Pool
+	db         Storer
 	tableName  string
 	fieldCount int
 }
 
-func newStore(db *pgxpool.Pool) *store {
+func newStore(db Storer) *store {
 	return &store{db: db, fieldCount: defaultFieldCount, tableName: defaultTableName}
 }
 

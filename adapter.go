@@ -2,8 +2,8 @@ package pgxadapter
 
 import (
 	"context"
+	"database/sql/driver"
 	"github.com/casbin/casbin/v2/persist"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/atomic"
 )
 
@@ -38,7 +38,10 @@ func WithTableName(tableName string) Option {
 	}
 }
 
-func NewAdapter(ctx context.Context, db *pgxpool.Pool, opts ...Option) (*Adapter, error) {
+func NewAdapter(ctx context.Context, db interface {
+	driver.Pinger
+	Storer
+}, opts ...Option) (*Adapter, error) {
 	if err := db.Ping(ctx); err != nil {
 		return nil, err
 	}
