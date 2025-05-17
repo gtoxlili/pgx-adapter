@@ -38,6 +38,13 @@ func WithTableName(tableName string) Option {
 	}
 }
 
+// WithNoRowsAffectedError 当 受影响的行数 为 0 时，返回的错误（默认为 nil）
+func WithNoRowsAffectedError(err error) Option {
+	return func(a *Adapter) {
+		a.store.setNoRowsAffectedError(err)
+	}
+}
+
 func NewAdapter(ctx context.Context, db interface {
 	driver.Pinger
 	Commander

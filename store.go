@@ -21,13 +21,14 @@ const (
 )
 
 type store struct {
-	db         Commander
-	tableName  string
-	fieldCount int
+	db                  Commander
+	tableName           string
+	fieldCount          int
+	noRowsAffectedError error
 }
 
 func newStore(db Commander) *store {
-	return &store{db: db, fieldCount: defaultFieldCount, tableName: defaultTableName}
+	return &store{db: db, fieldCount: defaultFieldCount, tableName: defaultTableName, noRowsAffectedError: nil}
 }
 
 func (s *store) setFieldCount(fieldCount int) {
@@ -36,6 +37,10 @@ func (s *store) setFieldCount(fieldCount int) {
 
 func (s *store) setTableName(tableName string) {
 	s.tableName = lo.SnakeCase(tableName)
+}
+
+func (s *store) setNoRowsAffectedError(err error) {
+	s.noRowsAffectedError = err
 }
 
 func (s *store) initTable(ctx context.Context) error {
@@ -88,9 +93,12 @@ func (s *store) insertRow(ctx context.Context, ptype string, args ...string) err
 		return "$" + strconv.Itoa(i+2)
 	}), ","))
 
-	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(genRule(ptype, args))...)
+	tag, err := s.db.Exec(ctx, sql, lo.ToAnySlice(genRule(ptype, args))...)
 	if err != nil {
 		return fmt.Errorf("failed to insert row: %v", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return s.noRowsAffectedError
 	}
 	return nil
 }
@@ -156,10 +164,13 @@ func (s *store) updateRow(ctx context.Context, ptype string, old, updated []stri
 		return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+s.fieldCount+2)
 	}), " and "))
 
-	merged := append(old, updated...)
-	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(genRule(ptype, merged))...)
+	merged := append(updated, old...)
+	tag, err := s.db.Exec(ctx, sql, lo.ToAnySlice(genRule(ptype, merged))...)
 	if err != nil {
 		return fmt.Errorf("failed to update row: %v", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return s.noRowsAffectedError
 	}
 	return nil
 }
@@ -173,18 +184,24 @@ func (s *store) deleteRow(ctx context.Context, ptype string, args ...string) err
 		return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+2)
 	}), " and "))
 
-	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(genRule(ptype, args))...)
+	tag, err := s.db.Exec(ctx, sql, lo.ToAnySlice(genRule(ptype, args))...)
 	if err != nil {
 		return fmt.Errorf("failed to delete row: %v", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return s.noRowsAffectedError
 	}
 	return nil
 }
 
 func (s *store) deleteByPType(ctx context.Context, ptype string) error {
 	sql := fmt.Sprintf(deleteByPType, s.tableName)
-	_, err := s.db.Exec(ctx, sql, ptype)
+	tag, err := s.db.Exec(ctx, sql, ptype)
 	if err != nil {
 		return fmt.Errorf("failed to delete by ptype: %v", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return s.noRowsAffectedError
 	}
 	return nil
 }
@@ -213,9 +230,12 @@ func (s *store) deleteWhere(ctx context.Context, ptype string, startIdx int, arg
 		sql += " and " + conditions
 	}
 
-	_, err := s.db.Exec(ctx, sql, lo.ToAnySlice(lo.Compact(genRule(ptype, args)))...)
+	tag, err := s.db.Exec(ctx, sql, lo.ToAnySlice(lo.Compact(genRule(ptype, args)))...)
 	if err != nil {
 		return fmt.Errorf("failed to delete where: %v", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return s.noRowsAffectedError
 	}
 	return nil
 }
@@ -246,11 +266,16 @@ func (s *store) deleteAndInsertAll(ctx context.Context, rules [][]string) error 
 
 	if batch.Len() > 0 {
 		br := tx.SendBatch(ctx, batch)
+		// 预防出错的情况
+		defer br.Close()
 
 		for i := 0; i < batch.Len(); i++ {
-			_, err = br.Exec()
+			tag, err := br.Exec()
 			if err != nil {
 				return fmt.Errorf("failed to execute batch: %v", err)
+			}
+			if tag.RowsAffected() == 0 && s.noRowsAffectedError != nil {
+				return s.noRowsAffectedError
 			}
 		}
 
@@ -335,7 +360,7 @@ func (s *store) batchUpdate(ctx context.Context, ptype string, oldRules, newRule
 			return "v" + strconv.Itoa(i) + " = $" + strconv.Itoa(i+s.fieldCount+2)
 		}), " and "))
 
-		merged := append(oldRules[i], newRules[i]...)
+		merged := append(newRules[i], oldRules[i]...)
 		batch.Queue(sql, lo.ToAnySlice(genRule(ptype, merged))...)
 	}
 
