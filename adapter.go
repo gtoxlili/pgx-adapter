@@ -14,14 +14,14 @@ type Adapter struct {
 
 // the supported for Casbin interfaces.
 var (
-	_ persist.Adapter                 = new(Adapter)
-	_ persist.ContextAdapter          = new(Adapter)
-	_ persist.FilteredAdapter         = new(Adapter)
-	_ persist.ContextFilteredAdapter  = new(Adapter)
-	_ persist.BatchAdapter            = new(Adapter)
-	_ persist.ContextBatchAdapter     = new(Adapter)
-	_ persist.UpdatableAdapter        = new(Adapter)
-	_ persist.ContextUpdatableAdapter = new(Adapter)
+	_ persist.Adapter                 = (*Adapter)(nil)
+	_ persist.ContextAdapter          = (*Adapter)(nil)
+	_ persist.FilteredAdapter         = (*Adapter)(nil)
+	_ persist.ContextFilteredAdapter  = (*Adapter)(nil)
+	_ persist.BatchAdapter            = (*Adapter)(nil)
+	_ persist.ContextBatchAdapter     = (*Adapter)(nil)
+	_ persist.UpdatableAdapter        = (*Adapter)(nil)
+	_ persist.ContextUpdatableAdapter = (*Adapter)(nil)
 )
 
 type Option func(*Adapter)
