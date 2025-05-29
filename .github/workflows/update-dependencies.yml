@@ -1,0 +1,64 @@
+name: 定期更新依赖
+
+# 每周一凌晨2点运行，也可以手动触发
+on:
+  schedule:
+    - cron: '0 2 * * 1,4'  # 每周一和周四凌晨2点
+  workflow_dispatch:  # 手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 解析 go.mod 获取 Go 版本
+        id: goversion
+        run: |
+          echo "GO_VERSION=$(grep '^go ' go.mod | awk '{print $2}')" >> $GITHUB_OUTPUT
+
+      - name: 设置 Go 环境
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.goversion.outputs.GO_VERSION }}
+
+      - name: 更新 Go 依赖
+        run: |
+          # 更新所有依赖到最新版本
+          go get -u ./...
+          
+          # 整理依赖
+          go mod tidy
+          
+          # 验证依赖
+          go mod verify
+
+      - name: 检查是否有变更
+        id: changes
+        run: |
+          if git diff --quiet go.mod go.sum; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 构建提交信息
+        if: steps.changes.outputs.has_changes == 'true'
+        id: commit_msg
+        run: |
+          ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "msg=chore: 自动更新依赖 ${{ steps.goversion.outputs.GO_VERSION }} @ $ts" >> $GITHUB_OUTPUT
+
+      - name: 提交变更
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: 'go.mod go.sum'
+          message: ${{ steps.commit_msg.outputs.msg }}
