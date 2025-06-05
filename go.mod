@@ -3,7 +3,7 @@ module github.com/gtoxlili/pgx-adapter
 go 1.24
 
 require (
-	github.com/casbin/casbin/v2 v2.105.0
+	github.com/casbin/casbin/v2 v2.106.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/samber/lo v1.50.0
 	go.uber.org/atomic v1.11.0
