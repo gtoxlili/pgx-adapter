@@ -5,7 +5,7 @@ go 1.24
 require (
 	github.com/casbin/casbin/v2 v2.107.0
 	github.com/jackc/pgx/v5 v5.7.5
-	github.com/samber/lo v1.50.0
+	github.com/samber/lo v1.51.0
 	go.uber.org/atomic v1.11.0
 )
 
