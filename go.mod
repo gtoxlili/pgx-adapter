@@ -7,7 +7,7 @@ toolchain go1.24.7
 require (
 	github.com/casbin/casbin/v2 v2.127.0
 	github.com/jackc/pgx/v5 v5.7.6
-	github.com/samber/lo v1.51.0
+	github.com/samber/lo v1.52.0
 	go.uber.org/atomic v1.11.0
 )
 
@@ -23,7 +23,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/crypto v0.42.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/crypto v0.43.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 )
