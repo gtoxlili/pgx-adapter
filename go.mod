@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.7
 
 require (
-	github.com/casbin/casbin/v2 v2.132.0
+	github.com/casbin/casbin/v2 v2.134.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/samber/lo v1.52.0
 	go.uber.org/atomic v1.11.0
